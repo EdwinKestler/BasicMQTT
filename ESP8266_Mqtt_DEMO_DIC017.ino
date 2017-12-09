@@ -2,7 +2,7 @@
 #include <ESP8266WiFi.h>                                              //Libreira de ESPCORE ARDUINO
 #include <PubSubClient.h>                                             //https://github.com/knolleary/pubsubclient/releases/tag/v2.3
 #include <ArduinoJson.h>                                              //https://github.com/bblanchon/ArduinoJson/releases/tag/v5.0.7
-#include <TimeLibEsp.h>  
+#include <TimeLib.h>  
 //----------------------------------------------------------------------Librerias de manejo de setup de redes 
 #include <ESP8266WebServer.h>                                         //Libreira de html para ESP8266
 #include <DNSServer.h>                                                //Libreria de DNS para resolucion de Nombres
@@ -13,7 +13,7 @@
 //----------------------------------------------------------------------Variables de verificacion de fallas de capa de conexion con servicio
 int failed, sent, published;                                          //Variables de conteo de envios 
 //----------------------------------------------------------------------Variables del servicio de envio de datos MQTT
-char server[] = "eospower.flatbox.io";       //EL ORG es la organizacion configurada para el servicio de Bluemix
+char server[] = "192.168.10.58";       //EL ORG es la organizacion configurada para el servicio de Bluemix
 //char authMethod[] = "use-token-auth";                                 //Tipo de Autenticacion para el servicio de Bluemix (la calve es unica por cada nodo)
 //char token[] = TOKEN;                                                 //Variable donde se almacena el Token provisto por el servicio (ver Settings.h)
 char clientId[] = "d:" ORG ":" DEVICE_TYPE ":" DEVICE_ID;             //Variable de Identificacion de Cliente para servicio de MQTT Bluemix 
@@ -22,6 +22,12 @@ int FWVERSION = 1;                                                    //Variable
 int SleepState = 0;
 int rotation =1;
 unsigned long lastPublishMillis, lastDisplayMillis;                                      //Variable para llevar conteo del tiempo desde la ultima publicacion 
+//----------------------------------------------------------------------declaracion de luces
+
+int luzVerde = 12;
+int luzAzul  = 13;
+int luzRoja =  14;
+
 //----------------------------------------------------------------------Variables Propias del CORE ESP8266 Para la administracion del Modulo
 String NodeID = String(ESP.getChipId());                              //Variable Global que contiene la identidad del nodo (ChipID) o numero unico
 //----------------------------------------------------------------------Funcion remota para mandar a dormir el esp despues de enviar un RFID
@@ -39,7 +45,28 @@ void handleVar (byte* payloadrsp) {
   Serial.print(F("Nuevo Mensaje:"));                                       //se imprime un mensaje con ka variable que acaba de modificarse remotamente
   Serial.println(new_msg);                                           //se imprime el nuevo valor de la variable actualizada    
   delay(1); // Allow ESP8266 to handle watchdog & WiFi stuff
-  Serial.println(new_msg);
+  String Mensaje((char*)new_msg);
+  if(Mensaje == "Rojo"){
+      digitalWrite(luzRoja, HIGH);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzAzul, LOW);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzVerde, LOW);   // turn the LED on (HIGH is the voltage level)
+      Serial.println("encendiendo luz roja");                                           //se imprime el nuevo valor de la variable actualizada
+  }
+  if(Mensaje == "Azul"){
+      digitalWrite(luzAzul, HIGH);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzRoja, LOW);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzVerde, LOW);   // turn the LED on (HIGH is the voltage level)
+  }
+  if(Mensaje == "Verde"){
+      digitalWrite(luzVerde, HIGH);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzRoja, LOW);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzAzul, LOW);   // turn the LED on (HIGH is the voltage level)
+  } 
+  else if(Mensaje == "off"){
+      digitalWrite(luzRoja, LOW);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzVerde, LOW);   // turn the LED on (HIGH is the voltage level)
+      digitalWrite(luzAzul, LOW);   // turn the LED on (HIGH is the voltage level)
+  }
 }
 //----------------------------------------------------------------------Funcion de vigilancia sobre mensajeria remota desde el servicion de IBM bluemix
 void callback(char* topic, byte* payload, unsigned int payloadLength){//Esta Funcion vigila los mensajes que se reciben por medio de los Topicos de respuesta;
@@ -71,7 +98,9 @@ void mqttConnect() {
     char charBuf[30];
     String CID (clientId + NodeID);
     CID.toCharArray(charBuf, 30);
-    if (!!!client.connect(clientId, USER, PASS)) {                                //Si no se encuentra conectado al servicio intentar la conexion con las credenciales Clientid, Metodo de autenticacion y el Tokeno password
+    //if (!!!client.connect(clientId, USER, PASS)) {                                //Si no se encuentra conectado al servicio intentar la conexion con las credenciales Clientid, Metodo de autenticacion y el Tokeno password
+   if (!!!client.connect(clientId, USER, PASS)) {                                //Si no se encuentra conectado al servicio intentar la conexion con las credenciales Clientid, Metodo de autenticacion y el Tokeno password
+
       int i = 0;
     if ( i < 60){
        Serial.print(F("."));
@@ -155,9 +184,12 @@ void wifimanager() {
 //------------------------------- setup  ---------------------------------------------//
 //-------- Funcion Principal de inicializacion de rutina en modulo 
 void setup() {
+  pinMode(luzRoja, OUTPUT);
+  pinMode(luzAzul, OUTPUT);
+  pinMode(luzVerde, OUTPUT);
+
   Serial.begin(115200);
-  Serial.println(F("initializing AUTH SCREEN Setup"));
-  Serial.println("ILI9341 Test!"); 
+  Serial.println(F("initializing AUTH MQTT Setup"));
    //------------------------------------------------------ Funcion de Conexion a Wifi
   while (WiFi.status() != WL_CONNECTED) {//conectamos al wifi si no hay la rutina iniciara una pagina web de configuracion en la direccion 192.168.4.1 
     wifimanager();
@@ -167,7 +199,7 @@ void setup() {
   Serial.println(WiFi.localIP());
   Serial.println();//dejamos una linea en blanco en la terminal 
  
-  Serial.println(F("Time Sync, Connecting to mqtt sevrer"));
+  Serial.println(F("Connecting to mqtt sevrer"));
   //------------------------------------------------------ Funcion de Conexion a MQTT
   mqttConnect();//Conectamos al servicio de Mqtt con las credenciales provistas en el archivo "settings.h"
   Serial.println(F("Mqtt Connection Done!, sending Device Data"));
