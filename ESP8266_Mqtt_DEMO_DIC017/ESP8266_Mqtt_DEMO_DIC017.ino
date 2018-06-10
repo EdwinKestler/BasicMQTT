@@ -30,7 +30,7 @@ int luzRoja =  14;
 
 //----------------------------------------------------------------------Variables Propias del CORE ESP8266 Para la administracion del Modulo
 String NodeID = String(ESP.getChipId());                              //Variable Global que contiene la identidad del nodo (ChipID) o numero unico
-//----------------------------------------------------------------------Funcion remota para mandar a dormir el esp despues de enviar un RFID
+//----------------------------------------------------------------------Fubcon que recibe los mensajes que provienen de internet
 void handleVar (byte* payloadrsp) {
   StaticJsonBuffer<200> jsonBuffer;                                   //Se establece un Buffer de 1o suficientemente gande para almacenar los menasajes JSON
   JsonObject& root = jsonBuffer.parseObject((char*)payloadrsp);       //Se busca la raiz del mensaje Json convirtiendo los Bytes del Payload a Caracteres en el buffer
